@@ -149,8 +149,8 @@ type Reservation {
   roomId: ID!
   title: String!
   requesterEmail: String!
-  startsAt: String!
-  endsAt: String!
+  startsAt: Date!
+  endsAt: Date!
   status: ReservationStatus!
   createdAt: Date!
 }
@@ -159,8 +159,8 @@ input ReservationInput {
   roomId: ID!
   requesterEmail: String!
   title: String
-  startsAt: String
-  endsAt: String
+  startsAt: Date
+  endsAt: Date
 }
 
 type Room {
@@ -228,6 +228,34 @@ mutation {
       "status": "CONFIRMED"
     }
   }
+}
+```
+
+
+### Esquema Mongo DB
+
+#### room
+```json
+{
+  "_id": { "$oid": "654000000000000000000001" },
+  "name": "Sala Principal",
+  "description": "Sala con proyector y pizarra",
+  "capacity": 8,
+  "location": "Piso 3 - Ala A"
+}
+```
+
+#### reservation
+```json
+{
+  "_id": { "$oid": "655000000000000000000001" },
+  "roomId": { "$oid": "654000000000000000000001" },
+  "title": "Reunión semanal",
+  "requesterEmail": "juan.perez@example.com",
+  "startsAt": "2025-11-01T10:00:00Z",
+  "endsAt": "2025-11-01T11:00:00Z",
+  "status": "BOOKED",              // BOOKED | CANCELLED
+  "createdAt": "2025-10-26T12:00:00Z"
 }
 ```
 
