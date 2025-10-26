@@ -126,7 +126,9 @@ El Administrador interactúa con la aplicación web, la cual se comunica con el 
 - **Decisión: No implementar reintentos, caché ni auditoría de emails.**
     - **Justificación:** Para mantener la complejidad del proyecto bajo control y enfocarnos en cumplir los requisitos principales, se decidió que el worker de email **intentará enviar cada correo una sola vez**. Si falla, solo se registrará en los logs. Tampoco se implementarán sistemas de caché o batching. Estas son mejoras que se podrían añadir en el futuro.
 
-## Schema GraphQL
+## Modelo de Datos
+
+### Schema GraphQL
 
 ```yaml
 # schema.graphql
@@ -229,96 +231,60 @@ mutation {
 }
 ```
 
-## **Esqueleto de ejecución**
+## Pasos para ejecución local
 
-```python
-# Docker compose 
-version: "3.9"
+### Requisitos previos
 
-services:
-  api:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    container_name: cowork_api
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=development
-      - PORT=3000
-      - MONGO_URL=mongodb://mongo:27017/coworkreserve
-      - RABBITMQ_URL=amqp://rabbitmq
-    depends_on:
-      - mongo
-      - rabbitmq
+- [Docker](https://www.docker.com/) y [Docker Compose](https://docs.docker.com/compose/): Solo se necesita esto para ejecutar
+- [make](https://gnuwin32.sourceforge.net/packages/make.htm): Para ejecutar comandos predefinidos en el Makefile
+- [Postman](https://www.postman.com/): Para probar endpoints
+- [Mongo Db Compass](https://www.mongodb.com/products/tools/compass): Para visualizar mediante ui la db
+- [Node Js](https://nodejs.org/en/download): Por si se desea levantar los servicios localmente sin docker
 
-  mongo:
-    image: mongo:7
-    container_name: cowork_mongo
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: cowork_rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      - RABBITMQ_DEFAULT_USER=guest
-      - RABBITMQ_DEFAULT_PASS=guest
-
-volumes:
-  mongo_data:
+### Ejecución 1ra vez
 
 ```
-
-```docker
-# Dockerfile de la api
-FROM node:20-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
-### Pasos para ejecución local (en un README.md)
-
-```markdown
-# Sistema de Reservas de Salas en Co-working
-
-Este entorno usa **Docker Compose** para levantar los servicios base del sistema:
-- **API (placeholder Node.js)**  
-- **MongoDB (base de datos)**  
-- **RabbitMQ (broker de mensajería)**  
-
----
-
-## Requisitos
-
-- [Docker](https://www.docker.com/) y [Docker Compose](https://docs.docker.com/compose/)
-- (Opcional) `make`, `curl`, o `httpie` para probar endpoints
-
----
-
-## Ejecución
-
-```bash
-
 # Clonar este repo
 git clone https://github.com/mateo-ceballos-colombo/IAW-TPI
 cd IAW-TPI
 
+# Copiar .env.example y setear las varibles de entorno necesarias
+# Los valores por defecto funcionan
+cp .env.example .env
+
 # Construir y levantar los servicios
-docker compose build
+# Levantar primero elasticsearch para setear las contraseñas
+docker compose up -d elasticsearch
+docker exec -it iaw-tpi-elasticsearch-1 bin/elasticsearch-reset-password -u elastic -i
+# Aqui se pedirá que se le de una contraseña. Con esta se logueará en Kibana. Ejemplo password
+docker exec -it iaw-tpi-elasticsearch-1 bin/elasticsearch-reset-password -u kibana_system -i
+# Aqui se pedirá que se le de una contraseña. En el .env.example es password
+
+# Levantar todo
 docker compose up -d
+
+# Detener todo
+docker compose down
 ```
 
----
+Visitar además keycloack y crear un reino llamado cowork (o el nombre que se le haya dado en el .env)
+
+### URLs
+
+| Service       | URL                           | Comentario                    |
+| ---           | ---                           | ---                           |
+| Keycloack     | http://localhost:8080         | Seguridad. Por defecto es admin, admin |
+| RabbitMQ      | http://localhost:15672        | Message Broker. Por defecto es admin, admin |
+| Mailhog       | http://localhost:8025         | Emails                        |
+| Kibana        | http://localhost:5601         | Observabilidad. Por defecto es elastic, password  |
+| MongoDB       | http://localhost:27018        | Ver desde Mongo DB Compass. Por defecto es admin, admin |
+| Frontend      | http://localhost:3000         | Para Usuarios finales   |
+| GraphQL BFF   | http://localhost:4000         | Para probar el servicio |
+| ws occupancy  | http://localhost:4001         | Para probar el servicio |
+| API Reservas  | http://localhost:3001         | Para probar el servicio |
+| Scheduler     | http://localhost:3002         | Para probar el servicio |
+| worker email  |          | Sin interfaz |
+| worker no show|          | Sin interfaz |
 
 # **Etapa 2**
 
