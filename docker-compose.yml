@@ -14,7 +14,7 @@ services:
 
   # Database
   mongodb:
-    build: ./mongo   
+    build: ./services/mongo   
     container_name: mongodb
     environment:
       MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
