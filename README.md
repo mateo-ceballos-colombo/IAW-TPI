@@ -295,13 +295,13 @@ docker compose up -d
 docker compose down
 ```
 
-Visitar además keycloack y crear un reino llamado cowork (o el nombre que se le haya dado en el .env)
+Visitar además keycloak y crear un reino llamado cowork (o el nombre que se le haya dado en el .env)
 
 ### URLs
 
 | Service       | URL                           | Comentario                    |
 | ---           | ---                           | ---                           |
-| Keycloack     | http://localhost:8080         | Seguridad. Por defecto es admin, admin |
+| keycloak     | http://localhost:8080         | Seguridad. Por defecto es admin, admin |
 | RabbitMQ      | http://localhost:15672        | Message Broker. Por defecto es admin, admin |
 | Mailhog       | http://localhost:8025         | Emails                        |
 | Kibana        | http://localhost:5601         | Observabilidad. Por defecto es elastic, password  |
