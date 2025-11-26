@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   api:
-    build: ./api
+    build: ./services/api
     environment:
       - NODE_ENV=development
       - PORT=3000
@@ -20,7 +20,7 @@ services:
       - keycloak
 
   graphql-bff:
-    build: ./graphql-bff
+    build: ./services/graphql-bff
     environment:
       - API_BASE=http://api:3000/v1
       - PORT=4000
@@ -30,7 +30,7 @@ services:
       - api
 
   websocket-occupancy:
-    build: ./websocket-occupancy
+    build: ./services/websocket-occupancy
     environment:
       - PORT=5000
       - JWT_SECRET=dev-secret
@@ -44,7 +44,7 @@ services:
       - api
 
   worker-email:
-    build: ./worker-email
+    build: ./services/worker-email
     environment:
       - RABBITMQ_URL=amqp://rabbitmq
       - SMTP_HOST=mailhog
@@ -54,7 +54,7 @@ services:
       - mailhog
 
   worker-no-show:
-    build: ./worker-no-show
+    build: ./services/worker-no-show
     environment:
       - RABBITMQ_URL=amqp://rabbitmq
       - MONGO_URL=mongodb://mongo:27017/coworkreserve
@@ -63,7 +63,7 @@ services:
       - mongo
 
   scheduler:
-    build: ./scheduler
+    build: ./services/scheduler
     environment:
       - RABBITMQ_URL=amqp://rabbitmq
       - API_BASE=http://api:3000/v1
@@ -101,7 +101,6 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: admin
     ports:
       - "8080:8080"
-
 
 volumes:
   mongo_data:
