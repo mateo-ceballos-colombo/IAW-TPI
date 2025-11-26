@@ -5,7 +5,7 @@ info:
   description: >
     API REST transaccional para gestionar reservas. Autenticación mediante Bearer JWT (Keycloak). Tiempos en ISO 8601.
 servers:
-  - url: https://api.coworkreserve.com/v1
+  - url: http://localhost:3001
 security:
   - bearerAuth: []
 
@@ -106,6 +106,39 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Reservations]
+      summary: Modificar una reserva
+      description: >
+        Actualiza los datos de una reserva existente. Si se modifica el horario,
+        valida que no haya conflictos con otras reservas.
+      parameters:
+        - $ref: '#/components/parameters/ReservationId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationUpdateInput'
+      responses:
+        '200':
+          description: Reserva actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Reservation'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflicto de disponibilidad (overlap)
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
     delete:
       tags: [Reservations]
       summary: Cancelar una reserva 
@@ -130,6 +163,30 @@ paths:
     get:
       tags: [Rooms]
       summary: Listar salas
+      description: Lista salas con filtros opcionales.
+      parameters:
+        - in: query
+          name: name
+          description: Filtrar por nombre (búsqueda parcial, case-insensitive)
+          schema:
+            type: string
+        - in: query
+          name: minCapacity
+          description: Filtrar por capacidad mínima
+          schema:
+            type: integer
+            minimum: 1
+        - in: query
+          name: maxCapacity
+          description: Filtrar por capacidad máxima
+          schema:
+            type: integer
+            minimum: 1
+        - in: query
+          name: location
+          description: Filtrar por ubicación (búsqueda parcial, case-insensitive)
+          schema:
+            type: string
       responses:
         '200':
           description: Lista de salas
@@ -179,10 +236,7 @@ paths:
       tags: [Rooms]
       summary: Obtener sala por ID
       parameters:
-        - in: path
-          name: id
-          required: true
-          schema: { type: string }
+        - $ref: '#/components/parameters/RoomId'
       responses:
         '200':
           description: Sala
@@ -190,6 +244,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Room'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      tags: [Rooms]
+      summary: Modificar una sala
+      description: Actualiza los datos de una sala existente.
+      parameters:
+        - $ref: '#/components/parameters/RoomId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RoomUpdateInput'
+      responses:
+        '200':
+          description: Sala actualizada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Room'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Conflicto — ya existe otra sala con ese nombre
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+    delete:
+      tags: [Rooms]
+      summary: Eliminar una sala
+      description: >
+        Elimina una sala del sistema. Las reservas asociadas a esta sala
+        también serán eliminadas (cascade delete).
+      parameters:
+        - $ref: '#/components/parameters/RoomId'
+      responses:
+        '204':
+          description: Sala eliminada exitosamente
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -210,6 +310,13 @@ components:
       schema:
         type: string
       description: Identificador de la reserva
+    RoomId:
+      in: path
+      name: id
+      required: true
+      schema:
+        type: string
+      description: Identificador de la sala
 
   responses:
     Unauthorized:
@@ -244,6 +351,7 @@ components:
         - endsAt
         - status
         - createdAt
+        - participantsQuantity
       properties:
         id:
           type: string
@@ -266,6 +374,9 @@ components:
         createdAt:
           type: string
           format: date-time
+          description: ISO 8601, UTC recomendado
+        participantsQuantity:
+          type: integer
 
     ReservationCreateInput:
       type: object
@@ -275,6 +386,7 @@ components:
         - title
         - startsAt
         - endsAt
+        - participantsQuantity
       properties:
         roomId:
           type: string
@@ -286,9 +398,34 @@ components:
         startsAt:
           type: string
           format: date-time
+          description: ISO 8601, UTC recomendado
         endsAt:
           type: string
           format: date-time
+          description: ISO 8601, UTC recomendado
+        participantsQuantity:
+          type: integer
+
+    ReservationUpdateInput:
+      type: object
+      properties:
+        roomId:
+          type: string
+        title:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+          description: ISO 8601, UTC recomendado
+        endsAt:
+          type: string
+          format: date-time
+          description: ISO 8601, UTC recomendado
+        participantsQuantity:
+          type: integer
+      description: >
+        Todos los campos son opcionales. Solo se actualizarán los campos
+        proporcionados. requesterEmail no es modificable.
 
     Room:
       type: object
@@ -296,6 +433,7 @@ components:
         - id
         - name
         - capacity
+        - location
         - createdAt
       properties:
         id:
@@ -320,6 +458,7 @@ components:
       required:
         - name
         - capacity
+        - location
       properties:
         name:
           type: string
@@ -335,6 +474,27 @@ components:
           type: string
           nullable: true
           description: Ubicación física o piso
+
+    RoomUpdateInput:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Nombre único de la sala
+        description:
+          type: string
+          nullable: true
+        capacity:
+          type: integer
+          minimum: 1
+          description: Número máximo de personas
+        location:
+          type: string
+          nullable: true
+          description: Ubicación física o piso
+      description: >
+        Todos los campos son opcionales. Solo se actualizarán los campos
+        proporcionados.
 
     Problem:
       type: object

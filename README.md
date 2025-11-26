@@ -15,6 +15,18 @@ Este es el Trabajo Práctico Integrador de la materia Integración de Aplicacion
 
 *Link al enunciado:* https://docs.google.com/document/d/19nT2gK9bMSRasNAo5_cV-8qHkDXTDJVwe21OexxzCzc/edit?tab=t.0#heading=h.x0aijsgcfew2
 
+## Descripcion basica brindada del dominio
+
+*Reserva de Salas en Co-working*
+- Entidades: Sala, Reserva.
+- Transacción: Programar reserva (conflictos, capacidad, extras).
+- Asincronía: Recordatorios y liberación por no-show.
+- Integración: Webhook con calendario externo o WebSocket ocupación en tiempo real
+
+## Agregados al dominio
+
+- Usuarios: La aplicacion solo contará con un usuario administrador quien gestionará las salas y reservas. Será el recepcionista del cowork.
+
 ---
 
 # **Etapa 1**
