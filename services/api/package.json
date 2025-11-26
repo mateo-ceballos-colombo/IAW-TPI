@@ -1,5 +1,5 @@
 {
-  "name": "coworkreserve-worker-no-show",
+  "name": "coworkreserve-api",
   "version": "1.0.0",
   "type": "module",
   "main": "src/index.js",
@@ -8,6 +8,12 @@
   },
   "dependencies": {
     "amqplib": "^0.10.3",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "express": "^4.19.0",
+    "helmet": "^7.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "jwks-rsa": "^3.2.0",
     "mongoose": "^8.3.0"
   }
 }

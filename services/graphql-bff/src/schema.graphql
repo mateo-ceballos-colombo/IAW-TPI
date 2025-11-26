@@ -1,0 +1,40 @@
+scalar Date
+
+type Query {
+  reservations: [Reservation!]!
+  reservation(id: ID!): Reservation
+  rooms: [Room!]!
+}
+
+type Mutation {
+  createReservation(input: ReservationInput!): Reservation!
+  cancelReservation(id: ID!): Reservation!
+}
+
+type Reservation {
+  id: ID!
+  roomId: ID!
+  title: String!
+  requesterEmail: String!
+  startsAt: String!
+  endsAt: String!
+  status: String!
+  createdAt: String!
+}
+
+input ReservationInput {
+  roomId: ID!
+  requesterEmail: String!
+  title: String!
+  startsAt: String!
+  endsAt: String!
+}
+
+type Room {
+  id: ID!
+  name: String!
+  description: String
+  capacity: Int!
+  location: String
+  createdAt: String!
+}

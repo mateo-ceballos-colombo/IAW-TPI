@@ -1,0 +1,72 @@
+{
+  "info": {
+    "name": "CoworkReserve Compact",
+    "_postman_id": "placeholder-id",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "List rooms",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/rooms",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "rooms"
+          ]
+        }
+      }
+    },
+    {
+      "name": "Create reservation",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{token}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\"roomId\":\"SALA_ID\",\"requesterEmail\":\"user@example.com\",\"title\":\"Reuni\u00f3n\",\"startsAt\":\"2025-10-27T09:00:00Z\",\"endsAt\":\"2025-10-27T10:00:00Z\"}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/reservations",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "reservations"
+          ]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/v1"
+    },
+    {
+      "key": "token",
+      "value": "ey.fake.jwt.dev"
+    }
+  ]
+}

@@ -1,15 +1,14 @@
 {
-  "name": "graphql-bff",
-  "version": "0.1.0",
-  "private": true,
+  "name": "coworkreserve-graphql-bff",
+  "version": "1.0.0",
+  "type": "module",
   "main": "src/index.js",
   "scripts": {
     "start": "node src/index.js"
   },
   "dependencies": {
-    "apollo-server": "^3.11.1",
-    "graphql": "^16.6.0",
-    "dotenv": "^16.0.3",
-    "pino": "^8.0.0"
+    "@apollo/server": "^4.10.0",
+    "axios": "^1.6.7",
+    "jsonwebtoken": "^9.0.2"
   }
 }

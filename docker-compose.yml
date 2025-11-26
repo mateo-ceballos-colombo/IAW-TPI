@@ -1,213 +1,107 @@
+version: "3.9"
+
 services:
-
-  # Authorization / Authentication
-  keycloak:
-    image: quay.io/keycloak/keycloak:21.1.1
-    command: start-dev
+  api:
+    build: ./api
     environment:
-      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-    ports:
-      - "8080:8080"
-    networks:
-      - cowork-net
-
-  # Database
-  mongodb:
-    build: ./services/mongo   
-    container_name: mongodb
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_INITDB_ROOT_USERNAME}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_INITDB_ROOT_PASSWORD}
-    volumes:
-      - mongo-data:/data/db
-    ports:
-      - "27018:27017"
-    networks:
-      - cowork-net
-
-  # Message broker
-  rabbitmq:
-    image: rabbitmq:3-management
-    environment:
-      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
-      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
-    ports:
-      - "5672:5672"   # AMQP
-      - "15672:15672" # UI
-    networks:
-      - cowork-net
-
-  # Mail dev
-  mailhog:
-    image: mailhog/mailhog:latest
-    ports:
-      - "1025:1025"   # SMTP
-      - "8025:8025"   # UI
-    networks:
-      - cowork-net
-
-  # Elastic stack (dev single node)
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
-    environment:
-      - "ELASTIC_PASSWORD=${ELASTIC_PASSWORD}"
-      - node.name=es01
-      - discovery.type=single-node
-      - xpack.security.enabled=true
-      - xpack.security.http.ssl.enabled=false
-      - xpack.security.transport.ssl.enabled=false
-      - "http.host=0.0.0.0"
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    mem_limit: 1g
-    ports:
-      - "9200:9200"
-    volumes:
-      - es-data:/usr/share/elasticsearch/data
-    networks:
-      - cowork-net
-
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.11.1
-    environment:
-      ELASTICSEARCH_HOSTS: ${ELASTICSEARCH_URL}
-      ELASTICSEARCH_USERNAME: ${ELASTIC_USERNAME}
-      ELASTICSEARCH_PASSWORD: ${ELASTIC_PASSWORD}
-    ports:
-      - "5601:5601"
-    depends_on:
-      - elasticsearch
-    networks:
-      - cowork-net
-
-  apm-server:
-    image: docker.elastic.co/apm/apm-server:8.11.1
-    environment:
-      - output.elasticsearch.hosts=["${ELASTICSEARCH_URL}"]
-      - output.elasticsearch.username=${ELASTIC_USERNAME}
-      - output.elasticsearch.password=${ELASTIC_PASSWORD}
-    ports:
-      - "8200:8200"
-    depends_on:
-      - elasticsearch
-    networks:
-      - cowork-net
-
-  # App services (built from local Dockerfiles)
-
-  frontend:
-    build:
-      context: ./services/frontend
+      - NODE_ENV=development
+      - PORT=3000
+      - MONGO_URL=mongodb://mongo:27017/coworkreserve
+      - RABBITMQ_URL=amqp://rabbitmq
+      - JWT_SECRET=dev-secret
+      - KEYCLOAK_REALM=coworkreserve
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_CLIENT_ID=cowork-api
     ports:
       - "3000:3000"
-    environment:
-      - REACT_APP_KEYCLOAK_URL=${REACT_APP_KEYCLOAK_URL}
-      - REACT_APP_GRAPHQL_URL=${REACT_APP_GRAPHQL_URL}
-      - REACT_APP_WS_URL=${REACT_APP_WS_URL}
     depends_on:
-      - graphql-bff
-      - websocket-occupancy
+      - mongo
+      - rabbitmq
       - keycloak
-    networks:
-      - cowork-net
 
   graphql-bff:
-    build:
-      context: ./services/graphql-bff
+    build: ./graphql-bff
+    environment:
+      - API_BASE=http://api:3000/v1
+      - PORT=4000
     ports:
       - "4000:4000"
-    environment:
-      - API_URL=${API_RESERVAS_URL}
-      - KEYCLOAK_URL=${KEYCLOAK_URL}
-      - MONGO_URL=${MONGO_URL}
-      - RABBITMQ_URL=${RABBITMQ_URL}
-      - APM_SERVER_URL=${APM_SERVER_URL}
     depends_on:
-      - api-reservas
-      - keycloak
-    networks:
-      - cowork-net
-
-  api-reservas:
-    build:
-      context: ./services/api-reservas
-    ports:
-      - "3001:3001"
-    environment:
-      - MONGO_URL=${MONGO_URL}
-      - RABBITMQ_URL=${RABBITMQ_URL}
-      - KEYCLOAK_URL=${KEYCLOAK_URL}
-      - APM_SERVER_URL=${APM_SERVER_URL}
-    depends_on:
-      - mongodb
-      - rabbitmq
-      - keycloak
-    networks:
-      - cowork-net
+      - api
 
   websocket-occupancy:
-    build:
-      context: ./services/websocket-occupancy
-    ports:
-      - "4001:4001"
+    build: ./websocket-occupancy
     environment:
-      - RABBITMQ_URL=${RABBITMQ_URL}
-      - KEYCLOAK_URL=${KEYCLOAK_URL}
-      - APM_SERVER_URL=${APM_SERVER_URL}
-    depends_on:
-      - rabbitmq
-      - keycloak
-    networks:
-      - cowork-net
+      - PORT=5000
+      - JWT_SECRET=dev-secret
+      - KEYCLOAK_REALM=coworkreserve
+      - KEYCLOAK_URL=http://keycloak:8080
+      - KEYCLOAK_CLIENT_ID=cowork-api
 
-  scheduler:
-    build:
-      context: ./services/scheduler
-    environment:
-      - MONGO_URL=${MONGO_URL}
-      - RABBITMQ_URL=${RABBITMQ_URL}
-      - APM_SERVER_URL=${APM_SERVER_URL}
+    ports:
+      - "5000:5000"
     depends_on:
-      - mongodb
-      - rabbitmq
-    networks:
-      - cowork-net
+      - api
 
   worker-email:
-    build:
-      context: ./services/worker-email
+    build: ./worker-email
     environment:
-      - RABBITMQ_URL=${RABBITMQ_URL}
-      - SMTP_HOST=${SMTP_HOST}
-      - SMTP_PORT=${SMTP_PORT}
-      - SMTP_FROM=${SMTP_FROM}
-      - APM_SERVER_URL=${APM_SERVER_URL}
+      - RABBITMQ_URL=amqp://rabbitmq
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
     depends_on:
       - rabbitmq
       - mailhog
-    networks:
-      - cowork-net
 
   worker-no-show:
-    build:
-      context: ./services/worker-no-show
+    build: ./worker-no-show
     environment:
-      - RABBITMQ_URL=${RABBITMQ_URL}
-      - MONGO_URL=${MONGO_URL}
-      - APM_SERVER_URL=${APM_SERVER_URL}
+      - RABBITMQ_URL=amqp://rabbitmq
+      - MONGO_URL=mongodb://mongo:27017/coworkreserve
     depends_on:
       - rabbitmq
-      - mongodb
-    networks:
-      - cowork-net
+      - mongo
+
+  scheduler:
+    build: ./scheduler
+    environment:
+      - RABBITMQ_URL=amqp://rabbitmq
+      - API_BASE=http://api:3000/v1
+    depends_on:
+      - api
+      - rabbitmq
+
+  mongo:
+    image: mongo:7
+    container_name: cowork_mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: cowork_rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+
+  mailhog:
+    image: mailhog/mailhog
+    container_name: cowork_mailhog
+    ports:
+      - "8025:8025"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0.0
+    command:
+      - start-dev
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8080:8080"
+
 
 volumes:
-  mongo-data:
-  es-data:
-
-networks:
-  cowork-net:
-    driver: bridge
+  mongo_data:
