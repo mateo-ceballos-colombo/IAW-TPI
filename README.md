@@ -110,10 +110,12 @@ El Administrador interactúa con la aplicación web, la cual se comunica con el 
 
 ### 3. Seguridad
 
-- **Decisión: Keycloak en Docker para gestionar la autenticación y autorización (OAuth2 + PKCE).**
-    - **Justificación:** Se delega la seguridad a una herramienta estándar y robusta. Usar **Keycloak** nos ahorra el tiempo y el riesgo de construir un sistema de login propio. El flujo **Authorization Code + PKCE** es el más seguro para aplicaciones web de tipo SPA (Single-Page Application) como React. Los endpoints están protegidos para que solo el rol `admin` pueda acceder.
-- **Decisión: La validación de tokens JWT se realiza solo en la frontera.**
-    - **Justificación:** Únicamente los servicios que reciben tráfico externo (la API REST, el BFF y el WebSocket) verifican los tokens. Los servicios internos como los workers son considerados "de confianza" y no necesitan validar tokens, simplificando la comunicación interna.
+- **Decisión: Keycloak en Docker para gestionar la autenticación y autorización (OAuth2 Authorization Code sin PKCE).**
+    - **Justificación:** Se delega la seguridad a una herramienta estándar y robusta. Usar **Keycloak** nos ahorra el tiempo y el riesgo de construir un sistema de login propio. El flujo **Authorization Code** se usa tanto en el Frontend React como en Postman (testing), manteniendo consistencia. PKCE se omite para simplificar el desarrollo local. Los endpoints están protegidos validando tokens JWT con RS256.
+- **Decisión: Token Relay entre BFF y API REST.**
+    - **Justificación:** El BFF reenvía el token del usuario original a la API REST sin modificarlo, manteniendo el contexto completo del usuario (sub, email, roles) en toda la cadena. Esto simplifica la arquitectura al no requerir Client Credentials y permite auditoría precisa de acciones por usuario.
+- **Decisión: La validación de tokens JWT se realiza solo en servicios expuestos.**
+    - **Justificación:** La API REST valida tokens directamente con las claves públicas de Keycloak (JWKS). El BFF valida tambien los tokens. Los servicios internos (workers, scheduler) son considerados "de confianza" y no validan tokens, simplificando la comunicación interna.
 
 ### 4. Asincronía y Datos
 

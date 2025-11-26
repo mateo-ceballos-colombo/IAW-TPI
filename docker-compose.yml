@@ -140,6 +140,7 @@ services:
       - MONGO_URL=${MONGO_URL}
       - RABBITMQ_URL=${RABBITMQ_URL}
       - KEYCLOAK_URL=${KEYCLOAK_URL}
+      - KEYCLOAK_ISSUER=${KEYCLOAK_ISSUER}
       - APM_SERVER_URL=${APM_SERVER_URL}
     depends_on:
       - mongodb

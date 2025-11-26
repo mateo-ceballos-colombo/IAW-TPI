@@ -3,13 +3,21 @@ const jwksClient = require('jwks-rsa');
 const { AppError } = require('../utils/errors');
 const logger = require('../utils/logger');
 
-// Validar que KEYCLOAK_URL esté configurada
+// Validar que KEYCLOAK_URL y KEYCLOAK_ISSUER estén configuradas
 if (!process.env.KEYCLOAK_URL) {
   logger.error('KEYCLOAK_URL no está configurada en las variables de entorno');
   throw new Error('KEYCLOAK_URL no está configurada');
 }
 
-logger.info({ keycloakUrl: process.env.KEYCLOAK_URL }, 'Configurando cliente Keycloak');
+if (!process.env.KEYCLOAK_ISSUER) {
+  logger.error('KEYCLOAK_ISSUER no está configurada en las variables de entorno');
+  throw new Error('KEYCLOAK_ISSUER no está configurada');
+}
+
+logger.info({ 
+  keycloakUrl: process.env.KEYCLOAK_URL,
+  keycloakIssuer: process.env.KEYCLOAK_ISSUER 
+}, 'Configurando cliente Keycloak');
 
 // Cliente para obtener las claves públicas de Keycloak
 const client = jwksClient({
@@ -56,7 +64,7 @@ async function authMiddleware(req, res, next) {
     // Verificar el token
     jwt.verify(token, getKey, {
       algorithms: ['RS256'],
-      issuer: process.env.KEYCLOAK_URL
+      issuer: process.env.KEYCLOAK_ISSUER
     }, (err, decoded) => {
       if (err) {
         logger.warn({ 
@@ -65,7 +73,7 @@ async function authMiddleware(req, res, next) {
           url: req.url 
         }, 'Token inválido o expirado');
         
-        // Mensajes más específicos según el tipo de error
+        // Mensajes específicos según el tipo de error
         if (err.name === 'TokenExpiredError') {
           return next(new AppError('Token expirado. Por favor, obtenga un nuevo token.', 401));
         } else if (err.name === 'JsonWebTokenError') {
