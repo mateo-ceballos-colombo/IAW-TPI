@@ -1,37 +1,123 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 
 <head>
-    <title>Test WebSocket</title>
+    <meta charset="UTF-8" />
+    <title>Test WebSocket Occupancy</title>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 16px;
+        }
+
+        #statusText {
+            font-weight: bold;
+        }
+
+        #log {
+            background: #111;
+            color: #0f0;
+            padding: 8px;
+            height: 220px;
+            overflow-y: auto;
+            font-size: 12px;
+        }
+
+        input {
+            padding: 4px;
+        }
+
+        button {
+            padding: 4px 8px;
+            margin-left: 4px;
+        }
+    </style>
 </head>
 
 <body>
-    <h1>WS Test</h1>
+    <h1>Test WebSocket Occupancy</h1>
+
+    <div>
+        WebSocket: <span id="wsConn">Desconectado</span>
+    </div>
+
+    <div style="margin-top: 10px;">
+        Room ID:
+        <input id="roomInput" size="30" value="TU_ROOM_ID_AQUI" />
+        <button id="btnSubscribe">Suscribirse a room</button>
+    </div>
+
+    <div style="margin-top: 10px;">
+        Estado de la sala: <span id="statusText">desconocido</span>
+    </div>
+
+    <h3>Log</h3>
+    <pre id="log"></pre>
 
     <script>
-        const token = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJ5bmlOVjlHNHNmdmdOS0h5RXpjdkNNWW9XNktSd1N4bm40S0o3X3JSZm9VIn0.eyJleHAiOjE3NjQxMjU1NzQsImlhdCI6MTc2NDEyNTI3NCwianRpIjoiMTY3MzllYTMtYmE3Yy00ODYwLWE3ZTktNGU5MTg5NzlmZmVmIiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4MDgwL3JlYWxtcy9jb3dvcmtyZXNlcnZlIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6ImJiYWJiNjk2LTRjYTMtNDI2Yy04NDBmLTg2NmFjNmJkODIyZCIsInR5cCI6IkJlYXJlciIsImF6cCI6ImNvd29yay1hcGkiLCJzZXNzaW9uX3N0YXRlIjoiMGYzNzY2ZmYtN2ZmNi00NjgxLWJlMjgtMGMxOGFkZTU1OWRjIiwiYWNyIjoiMSIsImFsbG93ZWQtb3JpZ2lucyI6WyIvKiJdLCJyZWFsbV9hY2Nlc3MiOnsicm9sZXMiOlsib2ZmbGluZV9hY2Nlc3MiLCJhZG1pbiIsInVtYV9hdXRob3JpemF0aW9uIiwiZGVmYXVsdC1yb2xlcy1jb3dvcmtyZXNlcnZlIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsiYWNjb3VudCI6eyJyb2xlcyI6WyJtYW5hZ2UtYWNjb3VudCIsIm1hbmFnZS1hY2NvdW50LWxpbmtzIiwidmlldy1wcm9maWxlIl19fSwic2NvcGUiOiJwcm9maWxlIGVtYWlsIiwic2lkIjoiMGYzNzY2ZmYtN2ZmNi00NjgxLWJlMjgtMGMxOGFkZTU1OWRjIiwiZW1haWxfdmVyaWZpZWQiOnRydWUsInByZWZlcnJlZF91c2VybmFtZSI6InRwaS0yIn0.dhX5AwUCdg7ixgA0sCvCOt7pz-uUG7L2t92Z2lMlgNNXT_bNTl5v40_Yg9fgDOM8IRArYmkhmlAoOCIHKNUFJJ9oJlxZeu2rt87qlIyeI_YExotMM5mX0MCpyvR-HN6LoOUY-5T2dSX2wC-k0fepjxgTzLp3mJp2orpXvrlwaOw9EUwqFCPq6WGvOCbDx-EkhjUAesx0lD8KZmJZ7RZcuT8YQQm6erAWz_IV40uDO9yiokW5tRukXvv9AaCR8n6dHpGBOl2GP_Wht5eAbXldGwiWbw39kOC1FMYdppU4O-LmiiN7UYWgrUB4avyoWTzKnECQ69gxg3_EH6xEmd9eUg";  // poné tu JWT admin
+        const token = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJUU1E5ajQtQm92MjI2VWxhQWlYNlRvQXNQd1RVTUJGamxTUUJ4Z2IycGNVIn0.eyJleHAiOjE3NjQyMDI5NTEsImlhdCI6MTc2NDIwMjY1MSwianRpIjoiNjY2OTUxNDAtN2EzYS00ZWQwLWEwYjEtYTgzN2JkMTc3ZDQ5IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4MDgwL3JlYWxtcy9jb3dvcmtyZXNlcnZlIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6IjU2NDRlMWQ5LTQ0YTItNDhlNi1hYmUwLTg1ZmM4YmQ0YzYyZSIsInR5cCI6IkJlYXJlciIsImF6cCI6ImNvd29yay1hcGkiLCJzZXNzaW9uX3N0YXRlIjoiYTYyNzk1OWQtNzQ2Mi00YzhjLTk5ZTQtZThiZDU3ZGU1MGM5IiwiYWNyIjoiMSIsInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsImFkbWluIiwidW1hX2F1dGhvcml6YXRpb24iLCJkZWZhdWx0LXJvbGVzLWNvd29ya3Jlc2VydmUiXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6ImVtYWlsIHByb2ZpbGUiLCJzaWQiOiJhNjI3OTU5ZC03NDYyLTRjOGMtOTllNC1lOGJkNTdkZTUwYzkiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInByZWZlcnJlZF91c2VybmFtZSI6InRwaS1hZG1pbiJ9.OTw_-ynIVsdH4B11dygPmz_3Yt7pvYO0XLfp0mNaNgZHCMa_KeolhuI-KexyYFtsdCSu1S6idaWJgR45yLgTcg0dEOSmSTA2EMKSJ9_HjtjWUc2oi5hvTfXusSFeUpqXEq5i2Udzlvq4a0KyDGLf07h3l1h7Gmud4Ofqb3FSYMOal--OujZcNL1k6p--OJzgkr5ixh-Oces9-yXYXiMiu05jq0AqZP1qK8QZ_qapYcNncVZEnTLt1Pf9V4JDPm1X07-w1kVCiiF46hn996EE90tGVDQQvqDxURVgVJaeWv8Ae3RkHl5QZ_VsyD1bObZ1cgRq1DGOVezep3SqZBkR9Q";
 
-        const socket = io("ws://localhost:5000", {
-            auth: { token }
+        const wsConnEl = document.getElementById("wsConn");
+        const roomInput = document.getElementById("roomInput");
+        const btnSubscribe = document.getElementById("btnSubscribe");
+        const statusText = document.getElementById("statusText");
+        const logEl = document.getElementById("log");
+
+        function log(msg) {
+            const time = new Date().toISOString();
+            logEl.textContent += `[${time}] ${msg}\n`;
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(msg);
+        }
+
+        function renderStatus(occupied) {
+            statusText.textContent = occupied ? "OCUPADA" : "LIBRE";
+            statusText.style.color = occupied ? "red" : "green";
+        }
+
+        // Conexión al WebSocket
+        const socket = io("http://localhost:5000", {
+            auth: { token },
+            transports: ["websocket"]
         });
 
-        // al conectar
         socket.on("connect", () => {
-            console.log("Conectado! ID:", socket.id);
-
-            // suscribirse a una sala
-            socket.emit("subscribeRoom", "<roomId>");
+            wsConnEl.textContent = "Conectado (" + socket.id + ")";
+            wsConnEl.style.color = "green";
+            log("Conectado al WS con id " + socket.id);
         });
 
-        // si hay error (p. ej. token inválido)
+        socket.on("disconnect", (reason) => {
+            wsConnEl.textContent = "Desconectado (" + reason + ")";
+            wsConnEl.style.color = "red";
+            log("Desconectado: " + reason);
+        });
+
         socket.on("connect_error", (err) => {
-            console.error("Error de conexión:", err.message);
+            wsConnEl.textContent = "Error: " + err.message;
+            wsConnEl.style.color = "red";
+            log("Error de conexión: " + err.message);
         });
 
-        // si recibe actualización de ocupación
+        // Suscribirse a una sala para recibir occupancyUpdate
+        btnSubscribe.onclick = () => {
+            const roomId = roomInput.value.trim();
+            if (!roomId) {
+                alert("Ingresá un roomId");
+                return;
+            }
+            log("Suscribiéndose a room: " + roomId);
+            socket.emit("subscribeRoom", roomId);
+        };
+
+        // Escuchar actualizaciones de ocupación
         socket.on("occupancyUpdate", (msg) => {
-            console.log("OCCUPANCY UPDATE:", msg);
+            log("occupancyUpdate recibido: " + JSON.stringify(msg));
+            // Se espera: { roomId, occupied }
+            if (typeof msg.occupied !== "undefined") {
+                renderStatus(!!msg.occupied);
+            }
         });
     </script>
 </body>
