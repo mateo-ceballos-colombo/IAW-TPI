@@ -1,3 +1,6 @@
+// IMPORTANTE: APM debe importarse PRIMERO para instrumentar módulos
+import "./apm.js";
+
 import express from "express";
 import cors from "cors";
 import helmet from "helmet";
@@ -6,6 +9,7 @@ import { initRabbit } from "./events/eventPublisher.js";
 import reservationsRouter from "./routes/reservations.routes.js";
 import roomsRouter from "./routes/rooms.routes.js";
 import { authMiddleware } from "./middleware/auth.js";
+import { apmMiddleware } from "./middleware/apmMiddleware.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 
 const app = express();
@@ -14,6 +18,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use(authMiddleware);
+app.use(apmMiddleware);
 
 app.use("/v1/reservations", reservationsRouter);
 app.use("/v1/rooms", roomsRouter);
