@@ -1,6 +1,7 @@
 import { ReservationRepository } from "../repositories/reservation.repository.js";
 import { RoomRepository } from "../repositories/room.repository.js";
 import { publishEvent } from "../events/eventPublisher.js";
+import { reservationsTotal, reservationsCancelled } from "../metrics.js";
 
 export async function createReservation(input) {
   // 1) Validar que la sala exista
@@ -26,7 +27,10 @@ export async function createReservation(input) {
     createdAt: new Date().toISOString()
   });
 
-  // 4) Publicar evento asíncrono
+  // 4) Incrementar métrica
+  reservationsTotal.inc({ status: "CONFIRMED" });
+
+  // 5) Publicar evento asíncrono
   await publishEvent("reservation.created", {
     reservationId: reservation._id.toString(),
     roomId: reservation.roomId,
@@ -46,6 +50,10 @@ export async function cancelReservation(id) {
   if (existing.status === "CANCELLED") return existing;
 
   const updated = await ReservationRepository.updateStatus(id, "CANCELLED");
+  
+  // Incrementar métrica
+  reservationsCancelled.inc();
+  
   await publishEvent("reservation.cancelled", {
     reservationId: id,
     roomId: updated.roomId

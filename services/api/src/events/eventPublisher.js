@@ -1,4 +1,5 @@
 import amqp from "amqplib";
+import { mqPublishTotal } from "../metrics.js";
 
 let channel;
 
@@ -21,4 +22,7 @@ export async function publishEvent(routingKey, payload) {
   channel.publish("reservations", routingKey, body, {
     contentType: "application/json"
   });
+  
+  // Incrementar métrica
+  mqPublishTotal.inc({ routing_key: routingKey });
 }

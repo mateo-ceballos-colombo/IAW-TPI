@@ -7,12 +7,23 @@ import reservationsRouter from "./routes/reservations.routes.js";
 import roomsRouter from "./routes/rooms.routes.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
-import roomsPublicOccupancyRouter from "./routes/rooms.occupancy.routes.js"
+import { metricsMiddleware } from "./middleware/metricsMiddleware.js";
+import roomsPublicOccupancyRouter from "./routes/rooms.occupancy.routes.js";
+import { register } from "./metrics.js";
 
 const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+
+// Middleware de métricas para todas las rutas
+app.use(metricsMiddleware);
+
+// Endpoint de métricas para Prometheus (sin auth)
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", register.contentType);
+  res.end(await register.metrics());
+});
 
 app.use("/v1/rooms", roomsPublicOccupancyRouter);
 
@@ -32,6 +43,7 @@ async function start() {
   await initRabbit(rabbitUrl);
   app.listen(port, () => {
     console.log("[api] escuchando en puerto " + port);
+    console.log("[api] métricas disponibles en http://localhost:" + port + "/metrics");
   });
 }
 
