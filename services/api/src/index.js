@@ -7,11 +7,14 @@ import reservationsRouter from "./routes/reservations.routes.js";
 import roomsRouter from "./routes/rooms.routes.js";
 import { authMiddleware } from "./middleware/auth.js";
 import { errorHandler } from "./middleware/errorHandler.js";
+import roomsPublicOccupancyRouter from "./routes/rooms.occupancy.routes.js"
 
 const app = express();
 app.use(helmet());
 app.use(cors());
 app.use(express.json());
+
+app.use("/v1/rooms", roomsPublicOccupancyRouter);
 
 app.use(authMiddleware);
 

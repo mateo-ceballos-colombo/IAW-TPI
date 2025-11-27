@@ -1,4 +1,3 @@
-// occupancy-ws.js
 import { Server } from "socket.io";
 import http from "http";
 import jwt from "jsonwebtoken";
@@ -8,6 +7,9 @@ import amqp from "amqplib";
 const realm = process.env.KEYCLOAK_REALM || "coworkreserve";
 const keycloakUrl = process.env.KEYCLOAK_URL || "http://keycloak:8080";
 const rabbitUrl = process.env.RABBITMQ_URL || "amqp://rabbitmq";
+
+// Base de la API 
+const apiBase = process.env.API_BASE || "http://api:3000/v1";
 
 const client = jwksClient({
   jwksUri: `${keycloakUrl}/realms/${realm}/protocol/openid-connect/certs`,
@@ -29,23 +31,49 @@ const io = new Server(server, {
   cors: { origin: "*" }
 });
 
-// ==========================
-// Estado de ocupación
-// ==========================
-
-// Map en memoria: roomId -> boolean (true = ocupada, false = libre)
 const roomOccupancy = new Map();
 
-// Emitir ocupación (solo boolean)
+const subscribedRooms = new Set();
+
 export function broadcastOccupancy(roomId, occupied) {
   const payload = { roomId, occupied };
   console.log("[WS] broadcastOccupancy:", payload);
   io.to(roomId).emit("occupancyUpdate", payload);
 }
 
-// ==========================
-// Middleware de autenticación
-// ==========================
+async function fetchRoomOccupancy(roomId) {
+  const url = `${apiBase}/rooms/${roomId}/occupancy`;
+  try {
+    const res = await fetch(url); 
+    if (!res.ok) {
+      console.error("[WS] error HTTP ocupación:", res.status, await res.text());
+      return null;
+    }
+    const data = await res.json();
+    return !!data.occupied;
+  } catch (err) {
+    console.error("[WS] error consultando ocupación API:", err);
+    return null;
+  }
+}
+
+async function pollOccupancy() {
+  if (!subscribedRooms.size) return;
+
+  console.log("[WS] pollOccupancy: chequeando", subscribedRooms.size, "rooms");
+
+  for (const roomId of subscribedRooms) {
+    const occupied = await fetchRoomOccupancy(roomId);
+    if (occupied === null) continue;
+
+    const prev = roomOccupancy.get(roomId);
+    if (prev !== occupied) {
+      roomOccupancy.set(roomId, occupied);
+      broadcastOccupancy(roomId, occupied);
+    }
+  }
+}
+
 io.use((socket, next) => {
   const token = socket.handshake.auth?.token;
 
@@ -78,31 +106,34 @@ io.use((socket, next) => {
   );
 });
 
-// ==========================
-// Eventos de WebSocket
-// ==========================
 io.on("connection", (socket) => {
   console.log("[WS] cliente conectado:", socket.user.preferred_username);
 
-  socket.on("subscribeRoom", (roomId) => {
+  socket.on("subscribeRoom", async (roomId) => {
     console.log("[WS] suscripción room:", roomId);
     socket.join(roomId);
+    subscribedRooms.add(roomId);
 
-    // Al suscribirse, le mando el estado actual
-    const occupied = roomOccupancy.get(roomId) ?? false;
-    socket.emit("occupancyUpdate", { roomId, occupied });
+    const occupied = await fetchRoomOccupancy(roomId);
+    if (occupied === null) {
+      const fallback = roomOccupancy.get(roomId) ?? false;
+      socket.emit("occupancyUpdate", { roomId, occupied: fallback });
+    } else {
+      roomOccupancy.set(roomId, occupied);
+      socket.emit("occupancyUpdate", { roomId, occupied });
+    }
   });
 
-  // SOLO PARA PRUEBAS MANUALES
   socket.on("testBroadcastOccupancy", ({ roomId, occupied }) => {
     console.log("[WS] testBroadcastOccupancy:", roomId, occupied);
     broadcastOccupancy(roomId, !!occupied);
   });
+
+  socket.on("disconnect", () => {
+  });
 });
 
-// ==========================
 // RabbitMQ: consumir eventos
-// ==========================
 async function initRabbitAndConsume() {
   console.log("[WS] conectando a RabbitMQ en", rabbitUrl);
   const conn = await amqp.connect(rabbitUrl);
@@ -110,18 +141,14 @@ async function initRabbitAndConsume() {
 
   await ch.assertExchange("reservations", "topic", { durable: true });
 
-  // Cola para este worker
   const q = await ch.assertQueue("ws.occupancy.worker", { durable: true });
 
-  // ⚠️ IMPORTANTE: tus servicios publican:
-  //   - "reservation.created"
-  //   - "reservation.cancelled"  (doble L, como en el servicio)
   await ch.bindQueue(q.queue, "reservations", "reservation.created");
   await ch.bindQueue(q.queue, "reservations", "reservation.cancelled");
 
   console.log("[WS] esperando mensajes de RabbitMQ...");
 
-  ch.consume(q.queue, (msg) => {
+  ch.consume(q.queue, async (msg) => {
     if (!msg) return;
 
     const routingKey = msg.fields.routingKey;
@@ -144,12 +171,9 @@ async function initRabbitAndConsume() {
       return;
     }
 
-    let occupied;
-    if (routingKey === "reservation.created") {
-      occupied = true;
-    } else if (routingKey === "reservation.cancelled") {
-      occupied = false;
-    } else {
+    const occupied = await fetchRoomOccupancy(roomId);
+    if (occupied === null) {
+      console.warn("[WS] no se pudo obtener ocupación actual, no emito");
       ch.ack(msg);
       return;
     }
@@ -166,13 +190,14 @@ async function initRabbitAndConsume() {
   });
 }
 
-// ==========================
 // Arranque del servidor
-// ==========================
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`[WS] WebSocket live en puerto ${PORT}`);
   initRabbitAndConsume().catch((err) => {
     console.error("[WS] Error iniciando RabbitMQ:", err);
   });
+
+
+  setInterval(pollOccupancy, 5 * 1000); 
 });

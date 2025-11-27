@@ -3,123 +3,299 @@
 
 <head>
     <meta charset="UTF-8" />
-    <title>Test WebSocket Occupancy</title>
+    <title>Cowork – Monitor de Salas</title>
     <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+
     <style>
+        :root {
+            --bg: #0f172a;
+            --panel: #1e293b;
+            --panel-light: #334155;
+            --text: #e2e8f0;
+            --muted: #94a3b8;
+            --primary: #3b82f6;
+            --busy: #ef4444;
+            --free: #22c55e;
+            --radius: 10px;
+        }
+
         body {
-            font-family: sans-serif;
-            padding: 16px;
+            margin: 0;
+            padding: 24px;
+            font-family: system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
         }
 
-        #statusText {
-            font-weight: bold;
+        h1 {
+            margin-top: 0;
+            font-size: 26px;
+            font-weight: 600;
         }
 
-        #log {
-            background: #111;
-            color: #0f0;
-            padding: 8px;
-            height: 220px;
-            overflow-y: auto;
-            font-size: 12px;
+        .panel {
+            background: var(--panel);
+            padding: 18px;
+            border-radius: var(--radius);
+            margin-bottom: 20px;
+            border: 1px solid var(--panel-light);
+        }
+
+        label {
+            font-size: 13px;
+            color: var(--muted);
+            margin-bottom: 6px;
+            display: block;
         }
 
         input {
-            padding: 4px;
+            width: 100%;
+            padding: 10px;
+            border-radius: var(--radius);
+            border: 1px solid var(--panel-light);
+            background: #0f172a;
+            color: var(--text);
+            font-size: 14px;
+            box-sizing: border-box;
         }
 
         button {
-            padding: 4px 8px;
-            margin-left: 4px;
+            margin-top: 10px;
+            padding: 10px 14px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 15px;
+            width: 100%;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: default;
+        }
+
+        #statusBar {
+            padding: 10px 14px;
+            border-radius: var(--radius);
+            font-weight: 600;
+            background: var(--panel-light);
+            text-align: center;
+        }
+
+        #statusBar.ok {
+            color: var(--free);
+        }
+
+        #statusBar.error {
+            color: var(--busy);
+        }
+
+        /* GRID DE ROOMS */
+        #roomsGrid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 16px;
+        }
+
+        .room-card {
+            background: var(--panel);
+            border-radius: var(--radius);
+            padding: 16px;
+            border: 1px solid var(--panel-light);
+            transition: 0.2s;
+        }
+
+        .room-card:hover {
+            transform: translateY(-3px);
+            background: #243045;
+        }
+
+        .room-title {
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .room-id {
+            color: var(--muted);
+            font-size: 11px;
+            margin-top: 4px;
+            word-break: break-all;
+        }
+
+        .badge {
+            margin-top: 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--panel-light);
+            border-radius: 999px;
+            padding: 4px 12px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .free {
+            background: var(--free);
+        }
+
+        .busy {
+            background: var(--busy);
         }
     </style>
 </head>
 
 <body>
-    <h1>Test WebSocket Occupancy</h1>
+    <h1>Monitor de Salas</h1>
 
-    <div>
-        WebSocket: <span id="wsConn">Desconectado</span>
+    <div class="panel">
+        <label for="tokenInput">Token JWT (oculto)</label>
+        <input id="tokenInput" type="password" placeholder="Pegá acá tu token JWT" />
+
+        <label for="apiBaseInput" style="margin-top:10px;">API Base</label>
+        <input id="apiBaseInput" type="text" value="http://localhost:3000/v1" />
+
+        <label for="wsUrlInput" style="margin-top:10px;">WebSocket URL</label>
+        <input id="wsUrlInput" type="text" value="http://localhost:5000" />
+
+        <button id="btnConnect">Conectar y Cargar Salas</button>
+
+        <div id="statusBar" class="error" style="margin-top:14px;">
+            Desconectado
+        </div>
     </div>
 
-    <div style="margin-top: 10px;">
-        Room ID:
-        <input id="roomInput" size="30" value="TU_ROOM_ID_AQUI" />
-        <button id="btnSubscribe">Suscribirse a room</button>
+    <div class="panel">
+        <h3>Salas</h3>
+        <div id="roomsGrid"></div>
     </div>
-
-    <div style="margin-top: 10px;">
-        Estado de la sala: <span id="statusText">desconocido</span>
-    </div>
-
-    <h3>Log</h3>
-    <pre id="log"></pre>
 
     <script>
-        const token = "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJUU1E5ajQtQm92MjI2VWxhQWlYNlRvQXNQd1RVTUJGamxTUUJ4Z2IycGNVIn0.eyJleHAiOjE3NjQyMDI5NTEsImlhdCI6MTc2NDIwMjY1MSwianRpIjoiNjY2OTUxNDAtN2EzYS00ZWQwLWEwYjEtYTgzN2JkMTc3ZDQ5IiwiaXNzIjoiaHR0cDovL2xvY2FsaG9zdDo4MDgwL3JlYWxtcy9jb3dvcmtyZXNlcnZlIiwiYXVkIjoiYWNjb3VudCIsInN1YiI6IjU2NDRlMWQ5LTQ0YTItNDhlNi1hYmUwLTg1ZmM4YmQ0YzYyZSIsInR5cCI6IkJlYXJlciIsImF6cCI6ImNvd29yay1hcGkiLCJzZXNzaW9uX3N0YXRlIjoiYTYyNzk1OWQtNzQ2Mi00YzhjLTk5ZTQtZThiZDU3ZGU1MGM5IiwiYWNyIjoiMSIsInJlYWxtX2FjY2VzcyI6eyJyb2xlcyI6WyJvZmZsaW5lX2FjY2VzcyIsImFkbWluIiwidW1hX2F1dGhvcml6YXRpb24iLCJkZWZhdWx0LXJvbGVzLWNvd29ya3Jlc2VydmUiXX0sInJlc291cmNlX2FjY2VzcyI6eyJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6ImVtYWlsIHByb2ZpbGUiLCJzaWQiOiJhNjI3OTU5ZC03NDYyLTRjOGMtOTllNC1lOGJkNTdkZTUwYzkiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsInByZWZlcnJlZF91c2VybmFtZSI6InRwaS1hZG1pbiJ9.OTw_-ynIVsdH4B11dygPmz_3Yt7pvYO0XLfp0mNaNgZHCMa_KeolhuI-KexyYFtsdCSu1S6idaWJgR45yLgTcg0dEOSmSTA2EMKSJ9_HjtjWUc2oi5hvTfXusSFeUpqXEq5i2Udzlvq4a0KyDGLf07h3l1h7Gmud4Ofqb3FSYMOal--OujZcNL1k6p--OJzgkr5ixh-Oces9-yXYXiMiu05jq0AqZP1qK8QZ_qapYcNncVZEnTLt1Pf9V4JDPm1X07-w1kVCiiF46hn996EE90tGVDQQvqDxURVgVJaeWv8Ae3RkHl5QZ_VsyD1bObZ1cgRq1DGOVezep3SqZBkR9Q";
+        const tokenInput = document.getElementById("tokenInput");
+        const apiBaseInput = document.getElementById("apiBaseInput");
+        const wsUrlInput = document.getElementById("wsUrlInput");
+        const btnConnect = document.getElementById("btnConnect");
+        const statusEl = document.getElementById("statusBar");
+        const roomsGridEl = document.getElementById("roomsGrid");
 
-        const wsConnEl = document.getElementById("wsConn");
-        const roomInput = document.getElementById("roomInput");
-        const btnSubscribe = document.getElementById("btnSubscribe");
-        const statusText = document.getElementById("statusText");
-        const logEl = document.getElementById("log");
+        let socket = null;
+        let rooms = [];
+        const occupancy = {};
 
-        function log(msg) {
-            const time = new Date().toISOString();
-            logEl.textContent += `[${time}] ${msg}\n`;
-            logEl.scrollTop = logEl.scrollHeight;
-            console.log(msg);
+        function setStatus(text, ok) {
+            statusEl.textContent = text;
+            statusEl.classList.remove("ok", "error");
+            statusEl.classList.add(ok ? "ok" : "error");
         }
 
-        function renderStatus(occupied) {
-            statusText.textContent = occupied ? "OCUPADA" : "LIBRE";
-            statusText.style.color = occupied ? "red" : "green";
+        async function fetchRooms(apiBase, token) {
+            const url = apiBase.replace(/\/$/, "") + "/rooms";
+            const res = await fetch(url, {
+                headers: { "Authorization": `Bearer ${token}` }
+            });
+
+            if (!res.ok) throw new Error(await res.text());
+            return res.json();
         }
 
-        // Conexión al WebSocket
-        const socket = io("http://localhost:5000", {
-            auth: { token },
-            transports: ["websocket"]
-        });
+        function renderRooms() {
+            roomsGridEl.innerHTML = "";
 
-        socket.on("connect", () => {
-            wsConnEl.textContent = "Conectado (" + socket.id + ")";
-            wsConnEl.style.color = "green";
-            log("Conectado al WS con id " + socket.id);
-        });
+            for (const room of rooms) {
+                const id = room._id || room.id;
+                const name = room.name || "(sin nombre)";
+                const occupied = !!occupancy[id];
 
-        socket.on("disconnect", (reason) => {
-            wsConnEl.textContent = "Desconectado (" + reason + ")";
-            wsConnEl.style.color = "red";
-            log("Desconectado: " + reason);
-        });
+                const card = document.createElement("div");
+                card.className = "room-card";
 
-        socket.on("connect_error", (err) => {
-            wsConnEl.textContent = "Error: " + err.message;
-            wsConnEl.style.color = "red";
-            log("Error de conexión: " + err.message);
-        });
+                card.innerHTML = `
+                    <div class="room-title">${name}</div>
+                    <div class="room-id">${id}</div>
 
-        // Suscribirse a una sala para recibir occupancyUpdate
-        btnSubscribe.onclick = () => {
-            const roomId = roomInput.value.trim();
-            if (!roomId) {
-                alert("Ingresá un roomId");
+                    <div class="badge">
+                        <div class="dot ${occupied ? "busy" : "free"}"></div>
+                        ${occupied ? "OCUPADA" : "LIBRE"}
+                    </div>
+                `;
+
+                roomsGridEl.appendChild(card);
+            }
+        }
+
+        function setupSocket(wsUrl, token) {
+            if (socket) socket.disconnect();
+
+            socket = io(wsUrl, {
+                auth: { token },
+                transports: ["websocket"]
+            });
+
+            socket.on("connect", () => {
+                setStatus(`Conectado (${socket.id})`, true);
+
+                for (const r of rooms) {
+                    const id = r._id || r.id;
+                    socket.emit("subscribeRoom", id);
+                }
+            });
+
+            socket.on("disconnect", () => {
+                setStatus("Desconectado", false);
+            });
+
+            socket.on("occupancyUpdate", msg => {
+                if (!msg.roomId) return;
+                occupancy[msg.roomId] = !!msg.occupied;
+                renderRooms();
+            });
+        }
+
+        // BOTÓN PRINCIPAL
+        btnConnect.addEventListener("click", async () => {
+            const token = tokenInput.value.trim();
+            const apiBase = apiBaseInput.value.trim();
+            const wsUrl = wsUrlInput.value.trim();
+
+            if (!token) {
+                alert("Pegá tu token JWT");
                 return;
             }
-            log("Suscribiéndose a room: " + roomId);
-            socket.emit("subscribeRoom", roomId);
-        };
 
-        // Escuchar actualizaciones de ocupación
-        socket.on("occupancyUpdate", (msg) => {
-            log("occupancyUpdate recibido: " + JSON.stringify(msg));
-            // Se espera: { roomId, occupied }
-            if (typeof msg.occupied !== "undefined") {
-                renderStatus(!!msg.occupied);
+            btnConnect.disabled = true;
+            setStatus("Cargando salas...", false);
+
+            try {
+                rooms = await fetchRooms(apiBase, token);
+                for (const r of rooms) {
+                    occupancy[r._id || r.id] = false;
+                }
+                renderRooms();
+
+                setStatus("Conectando WebSocket...", false);
+                setupSocket(wsUrl, token);
+
+            } catch (err) {
+                setStatus("Error: " + err.message, false);
             }
+
+            btnConnect.disabled = false;
         });
     </script>
+
 </body>
 
 </html>

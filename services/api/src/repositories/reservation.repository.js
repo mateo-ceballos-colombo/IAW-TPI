@@ -4,12 +4,15 @@ export const ReservationRepository = {
   findByFilters(filters) {
     return Reservation.find(filters).lean().exec();
   },
+
   findById(id) {
     return Reservation.findById(id).lean().exec();
   },
+
   create(doc, session) {
     return Reservation.create([doc], { session }).then(r => r[0]);
   },
+
   updateStatus(id, status, session) {
     return Reservation.findByIdAndUpdate(
       id,
@@ -17,6 +20,7 @@ export const ReservationRepository = {
       { new: true, session }
     ).lean().exec();
   },
+
   findOverlaps(roomId, startsAt, endsAt) {
     return Reservation.findOne({
       roomId,
@@ -24,5 +28,19 @@ export const ReservationRepository = {
       startsAt: { $lt: endsAt },
       endsAt: { $gt: startsAt }
     }).lean().exec();
+  },
+
+
+  async hasActiveReservation(roomId, at = new Date()) {
+    const nowIso = at.toISOString();
+
+    const exists = await Reservation.exists({
+      roomId,
+      status: "CONFIRMED",
+      startsAt: { $lte: nowIso },
+      endsAt:   { $gt: nowIso }
+    }).exec();
+
+    return !!exists;
   }
 };
