@@ -14,7 +14,6 @@ async function initMongo() {
   console.log("[scheduler] conectado a MongoDB");
 }
 
-
 // ---------- Rabbit ----------
 async function initRabbit() {
   const conn = await amqp.connect(rabbitUrl);
@@ -42,33 +41,19 @@ async function enqueueNoShowRelease() {
   }
 }
 
-const REMINDER_OFFSET_MINUTES = 60;
-const WINDOW_MINUTES = 1;
-
 async function enqueueReminders() {
   try {
-    const now = new Date(); // hora del contenedor
+    const now = new Date(); 
 
-    const windowStart = new Date(
-      now.getTime() + REMINDER_OFFSET_MINUTES * 60 * 1000
-    );
-    const windowEnd = new Date(
-      windowStart.getTime() + WINDOW_MINUTES * 60 * 1000
-    );
-
-    console.log(
-      "[scheduler] ahora:", now.toISOString(),
-      "windowStart:", windowStart.toISOString(),
-      "windowEnd:", windowEnd.toISOString()
-    );
-
+    console.log("[scheduler] ahora:", now.toISOString());
 
     const toRemind = await Reservation.find({
       status: "CONFIRMED",
-      startsAt: { $gte: windowStart, $lt: windowEnd }
+      startsAt: { $lte: now },
+      endsAt: { $gt: now }
     }).lean().exec();
 
-    console.log("[scheduler] reservas para recordar:", toRemind.length);
+    console.log("[scheduler] reservas activas ahora:", toRemind.length);
 
     toRemind.forEach(r => {
       channel.sendToQueue(
@@ -77,6 +62,7 @@ async function enqueueReminders() {
           reservationId: r._id.toString(),
           requesterEmail: r.requesterEmail,
           startsAt: r.startsAt,
+          endsAt: r.endsAt,
           title: r.title
         })),
         { contentType: "application/json" }
@@ -85,6 +71,7 @@ async function enqueueReminders() {
         reservationId: r._id.toString(),
         requesterEmail: r.requesterEmail,
         startsAt: r.startsAt,
+        endsAt: r.endsAt,
         title: r.title
       });
     });
@@ -92,6 +79,7 @@ async function enqueueReminders() {
     console.error("[scheduler] error en enqueueReminders", err.message);
   }
 }
+
 
 // ---------- main ----------
 async function main() {
@@ -122,7 +110,7 @@ async function main() {
   // cada 2 minutos: revisar no-shows
   cron.schedule("*/2 * * * *", enqueueNoShowRelease);
 
-  // cada 1 minuto: mandar recordatorios 1h antes
+  // cada 1 minuto: mandar recordatorios cuando la reserva acaba de empezar
   cron.schedule("* * * * *", enqueueReminders);
 }
 

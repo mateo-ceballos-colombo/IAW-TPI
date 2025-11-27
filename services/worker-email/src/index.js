@@ -65,7 +65,7 @@ async function main() {
     const subject = "Recordatorio de tu reserva";
     const text = `Hola,
 
-Te recordamos que tu reserva "${payload.title}" comienza en aproximadamente 1 hora.
+Te recordamos que tu reserva "${payload.title}" acaba de comenzar.
 
 Fecha y hora de inicio: ${startsAt.toLocaleString()}
 
