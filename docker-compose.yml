@@ -67,9 +67,11 @@ services:
     environment:
       - RABBITMQ_URL=amqp://rabbitmq
       - API_BASE=http://api:3000/v1
+      - MONGO_URL=mongodb://mongo:27017/coworkreserve  
     depends_on:
       - api
       - rabbitmq
+      - mongo
 
   mongo:
     image: mongo:7
