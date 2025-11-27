@@ -54,6 +54,18 @@
       "value": "",
       "type": "string",
       "description": "Obten este token usando Authorization > OAuth 2.0 > Get New Access Token"
+    },
+    {
+      "key": "roomId",
+      "value": "",
+      "type": "string",
+      "description": "Se auto-completa al crear una room"
+    },
+    {
+      "key": "reservationId",
+      "value": "",
+      "type": "string",
+      "description": "Se auto-completa al crear una reserva"
     }
   ],
   "item": [
@@ -279,6 +291,126 @@
               "raw": "{{baseUrl}}/reservations",
               "host": ["{{baseUrl}}"],
               "path": ["reservations"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "List Reservations with Filters",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations?date=2025-11-27&status=CONFIRMED",
+              "host": ["{{baseUrl}}"],
+              "path": ["reservations"],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2025-11-27",
+                  "description": "Filtrar por fecha (YYYY-MM-DD)"
+                },
+                {
+                  "key": "status",
+                  "value": "CONFIRMED",
+                  "description": "CONFIRMED o CANCELLED"
+                },
+                {
+                  "key": "roomId",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "requesterEmail",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Reservation by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations/{{reservationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reservations", "{{reservationId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Reservation",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set('reservationId', jsonData.id);",
+                  "    console.log('Reservation ID guardado:', jsonData.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{roomId}}\",\n  \"title\": \"Reunión de Planificación\",\n  \"requesterEmail\": \"admin@cowork.local\",\n  \"startsAt\": \"2025-11-27T14:00:00Z\",\n  \"endsAt\": \"2025-11-27T16:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reservations",
+              "host": ["{{baseUrl}}"],
+              "path": ["reservations"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Reservation",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Reunión de Planificación - Actualizada\",\n  \"startsAt\": \"2025-11-27T15:00:00Z\",\n  \"endsAt\": \"2025-11-27T17:00:00Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/reservations/{{reservationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reservations", "{{reservationId}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Reservation",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/reservations/{{reservationId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["reservations", "{{reservationId}}"]
             }
           },
           "response": []

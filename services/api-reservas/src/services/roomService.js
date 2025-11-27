@@ -1,4 +1,5 @@
 const roomRepository = require('../repositories/roomRepository');
+const reservationRepository = require('../repositories/reservationRepository');
 const { AppError } = require('../utils/errors');
 const mongoose = require('mongoose');
 
@@ -127,9 +128,8 @@ class RoomService {
       throw new AppError('Sala no encontrada', 404);
     }
 
-    // TODO: Implementar cascade delete de reservas cuando se implemente el modelo de Reservation
-    // const Reservation = require('../models/Reservation');
-    // await Reservation.deleteMany({ roomId: id });
+    // Cascade delete: eliminar todas las reservas asociadas a esta sala
+    await reservationRepository.deleteByRoomId(id);
 
     await roomRepository.delete(id);
   }

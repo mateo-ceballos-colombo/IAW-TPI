@@ -1,0 +1,111 @@
+{
+  "info": {
+    "name": "WebSocket Occupancy - Cowork",
+    "description": "Colección de Postman para testear el WebSocket de ocupación de salas en tiempo real",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "wsUrl",
+      "value": "ws://localhost:4001",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "{{keycloak_token}}",
+      "type": "string",
+      "description": "JWT token de Keycloak (obtener desde la colección REST API)"
+    },
+    {
+      "key": "roomId",
+      "value": "",
+      "type": "string",
+      "description": "ID de una sala (obtener desde la API REST)"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Connect to WebSocket",
+      "request": {
+        "method": "GET",
+        "url": {
+          "raw": "{{wsUrl}}",
+          "protocol": "ws",
+          "host": [
+            "localhost"
+          ],
+          "port": "4001"
+        },
+        "description": "Conectar al servidor WebSocket.\n\nEsperado:\n- Respuesta: { \"type\": \"connected\", \"message\": \"...\" }"
+      }
+    },
+    {
+      "name": "2. Authenticate",
+      "request": {
+        "method": "WEBSOCKET",
+        "url": "{{wsUrl}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"auth\",\n  \"token\": \"{{token}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Autenticar con JWT token.\n\nPasos previos:\n1. Obtener token desde Keycloak (usar colección REST API)\n2. Copiar token en la variable {{token}}\n3. Enviar este mensaje\n\nEsperado:\n- Respuesta: { \"type\": \"auth_success\", \"message\": \"Authentication successful\" }"
+      }
+    },
+    {
+      "name": "3. Subscribe to Room",
+      "request": {
+        "method": "WEBSOCKET",
+        "url": "{{wsUrl}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"subscribe\",\n  \"roomId\": \"{{roomId}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Suscribirse a actualizaciones de una sala específica.\n\nPasos previos:\n1. Estar autenticado (paso 2)\n2. Obtener roomId desde la API REST (GET /rooms)\n3. Establecer variable {{roomId}}\n4. Enviar este mensaje\n\nEsperado:\n- Respuesta: { \"type\": \"subscribed\", \"roomId\": \"...\", \"message\": \"...\" }\n- Luego recibirás actualizaciones automáticas cuando:\n  * Se cree una reserva en esta sala\n  * Se cancele una reserva en esta sala\n\nFormato de actualización:\n{\n  \"type\": \"room_update\",\n  \"roomId\": \"...\",\n  \"reservations\": [\n    {\n      \"reservationId\": \"...\",\n      \"startsAt\": \"2025-11-27T14:00:00Z\",\n      \"endsAt\": \"2025-11-27T16:00:00Z\",\n      \"title\": \"Reunión de Planificación\",\n      \"requesterEmail\": \"admin@cowork.local\",\n      \"participantsQuantity\": 5\n    }\n  ],\n  \"timestamp\": \"2025-11-26T...\"\n}"
+      }
+    },
+    {
+      "name": "4. Ping",
+      "request": {
+        "method": "WEBSOCKET",
+        "url": "{{wsUrl}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"ping\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Enviar ping para verificar conexión.\n\nEsperado:\n- Respuesta: { \"type\": \"pong\" }"
+      }
+    },
+    {
+      "name": "5. Unsubscribe",
+      "request": {
+        "method": "WEBSOCKET",
+        "url": "{{wsUrl}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"type\": \"unsubscribe\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "description": "Desuscribirse de actualizaciones de sala.\n\nEsperado:\n- Respuesta: { \"type\": \"unsubscribed\", \"message\": \"...\" }"
+      }
+    }
+  ]
+}

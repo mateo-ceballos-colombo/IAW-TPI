@@ -1,0 +1,321 @@
+{
+  "info": {
+    "name": "GraphQL BFF - CoWork",
+    "description": "Colección de Postman para probar el GraphQL BFF con token relay a la API REST",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "oauth2",
+    "oauth2": [
+      {
+        "key": "tokenName",
+        "value": "Keycloak Token",
+        "type": "string"
+      },
+      {
+        "key": "accessTokenUrl",
+        "value": "{{keycloak_url}}/protocol/openid-connect/token",
+        "type": "string"
+      },
+      {
+        "key": "authUrl",
+        "value": "{{keycloak_url}}/protocol/openid-connect/auth",
+        "type": "string"
+      },
+      {
+        "key": "grant_type",
+        "value": "authorization_code",
+        "type": "string"
+      },
+      {
+        "key": "clientId",
+        "value": "{{client_id}}",
+        "type": "string"
+      },
+      {
+        "key": "clientSecret",
+        "value": "{{client_secret}}",
+        "type": "string"
+      },
+      {
+        "key": "scope",
+        "value": "openid profile email",
+        "type": "string"
+      },
+      {
+        "key": "redirect_uri",
+        "value": "https://oauth.pstmn.io/v1/callback",
+        "type": "string"
+      },
+      {
+        "key": "addTokenTo",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "graphql_url",
+      "value": "http://localhost:4000/graphql",
+      "type": "string"
+    },
+    {
+      "key": "keycloak_url",
+      "value": "http://localhost:8080/realms/cowork",
+      "type": "string"
+    },
+    {
+      "key": "client_id",
+      "value": "cowork-app",
+      "type": "string"
+    },
+    {
+      "key": "client_secret",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Rooms",
+      "item": [
+        {
+          "name": "List Rooms",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query ListRooms($name: String, $minCapacity: Int, $maxCapacity: Int, $location: String) {\n  rooms(name: $name, minCapacity: $minCapacity, maxCapacity: $maxCapacity, location: $location) {\n    id\n    name\n    capacity\n    location\n    description\n    createdAt\n  }\n}",
+                "variables": "{\n  \"name\": \"\",\n  \"minCapacity\": null,\n  \"maxCapacity\": null,\n  \"location\": \"\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{graphql_url}}",
+              "host": ["{{graphql_url}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Room by ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query GetRoom($id: ID!) {\n  room(id: $id) {\n    id\n    name\n    capacity\n    location\n    description\n    createdAt\n  }\n}",
+                "variables": "{\n  \"id\": \"REPLACE_WITH_ROOM_ID\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{graphql_url}}",
+              "host": ["{{graphql_url}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation CreateRoom($input: RoomInput!) {\n  createRoom(input: $input) {\n    id\n    name\n    capacity\n    location\n    description\n    createdAt\n  }\n}",
+                "variables": "{\n  \"input\": {\n    \"name\": \"Sala Zeus GraphQL\",\n    \"capacity\": 12,\n    \"location\": \"Piso 3\",\n    \"description\": \"Sala amplia para reuniones ejecutivas - creada desde GraphQL\"\n  }\n}"
+              }
+            },
+            "url": {
+              "raw": "{{graphql_url}}",
+              "host": ["{{graphql_url}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation UpdateRoom($id: ID!, $input: RoomUpdateInput!) {\n  updateRoom(id: $id, input: $input) {\n    id\n    name\n    capacity\n    location\n    description\n    createdAt\n  }\n}",
+                "variables": "{\n  \"id\": \"REPLACE_WITH_ROOM_ID\",\n  \"input\": {\n    \"capacity\": 15,\n    \"description\": \"Sala actualizada desde GraphQL con mayor capacidad\"\n  }\n}"
+              }
+            },
+            "url": {
+              "raw": "{{graphql_url}}",
+              "host": ["{{graphql_url}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation DeleteRoom($id: ID!) {\n  deleteRoom(id: $id)\n}",
+                "variables": "{\n  \"id\": \"REPLACE_WITH_ROOM_ID\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{graphql_url}}",
+              "host": ["{{graphql_url}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Reservations",
+      "item": [
+        {
+          "name": "List Reservations",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query ListReservations($date: String, $status: ReservationStatus, $roomId: ID, $requesterEmail: String) {\n  reservations(date: $date, status: $status, roomId: $roomId, requesterEmail: $requesterEmail) {\n    id\n    roomId\n    room {\n      id\n      name\n      location\n    }\n    title\n    requesterEmail\n    startsAt\n    endsAt\n    status\n    participantsQuantity\n    createdAt\n  }\n}",
+                "variables": "{\n  \"date\": \"\",\n  \"status\": null,\n  \"roomId\": \"\",\n  \"requesterEmail\": \"\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{graphql_url}}",
+              "host": ["{{graphql_url}}"]
+            }
+          }
+        },
+        {
+          "name": "Get Reservation by ID",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "query GetReservation($id: ID!) {\n  reservation(id: $id) {\n    id\n    roomId\n    room {\n      id\n      name\n      capacity\n      location\n      description\n    }\n    title\n    requesterEmail\n    startsAt\n    endsAt\n    status\n    participantsQuantity\n    createdAt\n  }\n}",
+                "variables": "{\n  \"id\": \"REPLACE_WITH_RESERVATION_ID\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{graphql_url}}",
+              "host": ["{{graphql_url}}"]
+            }
+          }
+        },
+        {
+          "name": "Create Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation CreateReservation($input: ReservationInput!) {\n  createReservation(input: $input) {\n    id\n    roomId\n    room {\n      name\n      location\n    }\n    title\n    requesterEmail\n    startsAt\n    endsAt\n    status\n    participantsQuantity\n    createdAt\n  }\n}",
+                "variables": "{\n  \"input\": {\n    \"roomId\": \"REPLACE_WITH_ROOM_ID\",\n    \"title\": \"Reunión de equipo GraphQL\",\n    \"requesterEmail\": \"user@example.com\",\n    \"startsAt\": \"2024-02-01T14:00:00.000Z\",\n    \"endsAt\": \"2024-02-01T16:00:00.000Z\",\n    \"participantsQuantity\": 8\n  }\n}"
+              }
+            },
+            "url": {
+              "raw": "{{graphql_url}}",
+              "host": ["{{graphql_url}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation UpdateReservation($id: ID!, $input: ReservationUpdateInput!) {\n  updateReservation(id: $id, input: $input) {\n    id\n    roomId\n    title\n    requesterEmail\n    startsAt\n    endsAt\n    participantsQuantity\n    status\n    createdAt\n  }\n}",
+                "variables": "{\n  \"id\": \"REPLACE_WITH_RESERVATION_ID\",\n  \"input\": {\n    \"title\": \"Reunión actualizada desde GraphQL\",\n    \"participantsQuantity\": 10\n  }\n}"
+              }
+            },
+            "url": {
+              "raw": "{{graphql_url}}",
+              "host": ["{{graphql_url}}"]
+            }
+          }
+        },
+        {
+          "name": "Cancel Reservation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "graphql",
+              "graphql": {
+                "query": "mutation CancelReservation($id: ID!) {\n  cancelReservation(id: $id) {\n    id\n    status\n    createdAt\n  }\n}",
+                "variables": "{\n  \"id\": \"REPLACE_WITH_RESERVATION_ID\"\n}"
+              }
+            },
+            "url": {
+              "raw": "{{graphql_url}}",
+              "host": ["{{graphql_url}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

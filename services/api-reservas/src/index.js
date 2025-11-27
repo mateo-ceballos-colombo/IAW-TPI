@@ -41,6 +41,10 @@ async function startServer() {
     // Conectar a la base de datos
     await connectDatabase();
 
+    // Conectar a RabbitMQ
+    const eventPublisher = require('./events/eventPublisher');
+    await eventPublisher.connect();
+
     // Iniciar servidor HTTP
     app.listen(PORT, () => {
       logger.info({ port: PORT }, 'Servidor API-Reservas iniciado');
@@ -55,14 +59,18 @@ async function startServer() {
 process.on('SIGINT', async () => {
   logger.info('Cerrando servidor gracefully...');
   const { disconnectDatabase } = require('./config/database');
+  const eventPublisher = require('./events/eventPublisher');
   await disconnectDatabase();
+  await eventPublisher.close();
   process.exit(0);
 });
 
 process.on('SIGTERM', async () => {
   logger.info('Cerrando servidor gracefully...');
   const { disconnectDatabase } = require('./config/database');
+  const eventPublisher = require('./events/eventPublisher');
   await disconnectDatabase();
+  await eventPublisher.close();
   process.exit(0);
 });
 
