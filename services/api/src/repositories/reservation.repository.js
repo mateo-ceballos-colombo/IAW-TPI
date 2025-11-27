@@ -36,9 +36,9 @@ export const ReservationRepository = {
 
     const exists = await Reservation.exists({
       roomId,
-      status: "CONFIRMED",
+      status: { $in: ["CONFIRMED", "OCUPADO"] },
       startsAt: { $lte: nowIso },
-      endsAt:   { $gt: nowIso }
+      endsAt: { $gt: nowIso }
     }).exec();
 
     return !!exists;

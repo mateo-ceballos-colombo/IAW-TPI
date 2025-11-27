@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { Reservation } from "../models.js";
-import { createReservation, cancelReservation } from "../services/reservation.service.js";
+import { createReservation, cancelReservation, occupyReservation } from "../services/reservation.service.js";
 
 const router = Router();
 
@@ -49,3 +49,12 @@ router.delete("/:id", async (req, res, next) => {
 });
 
 export default router;
+
+router.post("/:id/occupy", async (req, res, next) => {
+  try {
+    const occupied = await occupyReservation(req.params.id);
+    res.json(occupied);
+  } catch (err) {
+    next(err);
+  }
+});

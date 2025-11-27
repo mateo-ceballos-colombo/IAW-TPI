@@ -51,12 +51,53 @@ export async function cancelReservation(id) {
 
   const updated = await ReservationRepository.updateStatus(id, "CANCELLED");
   
-  // Incrementar métrica
   reservationsCancelled.inc();
   
   await publishEvent("reservation.cancelled", {
     reservationId: id,
     roomId: updated.roomId
   });
+  return updated;
+}
+
+export async function occupyReservation(id, now = new Date()) {
+  const reservation = await ReservationRepository.findById(id);
+  if (!reservation) {
+    throw { status: 404, title: "Not Found", detail: "Reservation not found" };
+  }
+
+  // Si ya está cancelada, no se puede ocupar
+  if (reservation.status === "CANCELLED") {
+    throw {
+      status: 409,
+      title: "Conflict",
+      detail: "Reservation is already cancelled"
+    };
+  }
+
+  // Si ya está ocupada la devolvemos tal cual
+  if (reservation.status === "OCCUPIED") {
+    return reservation; 
+  }
+
+  // Validar ventana de tiempo para poder ocupar
+  const toleranceMinutes = 10;
+  const startsAt = new Date(reservation.startsAt);
+  const endsAt   = new Date(reservation.endsAt);
+  const nowDate  = new Date(now);
+
+  const earliest = new Date(startsAt.getTime() - toleranceMinutes * 60 * 1000);
+
+  // Solo se puede ocupar si:
+  // now >= (startsAt - 10 min)  AND  now <= endsAt
+  if (nowDate < earliest || nowDate > endsAt) {
+    throw {
+      status: 400,
+      title: "Bad Request",
+      detail: "Reservation cannot be occupied at this time"
+    };
+  }
+
+  const updated = await ReservationRepository.updateStatus(id, "OCCUPIED");
   return updated;
 }

@@ -12,9 +12,14 @@ const ReservationSchema = new mongoose.Schema({
   requesterEmail: { type: String, required: true },
   startsAt: { type: Date, required: true },
   endsAt: { type: Date, required: true },
-  status: { type: String, enum: ["CONFIRMED", "CANCELLED"], default: "CONFIRMED" },
+  status: {
+    type: String,
+    enum: ["CONFIRMED", "OCCUPIED", "CANCELLED"],
+    default: "CONFIRMED"
+  },
   createdAt: { type: Date, default: Date.now }
 });
+
 
 const Reservation = mongoose.model("Reservation", ReservationSchema);
 
@@ -38,15 +43,22 @@ async function main() {
     const now = new Date(payload.now || new Date().toISOString());
 
     try {
+      const toleranceMinutes = 10;
+      const limit = new Date(now.getTime() - toleranceMinutes * 60 * 1000);
+
       const result = await Reservation.updateMany(
-        { endsAt: { $lt: now }, status: "CONFIRMED" },
+        {
+          // la reserva debió haber empezado hace al menos 10 min
+          startsAt: { $lte: limit },
+          status: "CONFIRMED"
+        },
         { status: "CANCELLED" }
       );
       console.log("[worker-no-show] reservas marcadas CANCELLED:", result.modifiedCount);
       ch.ack(msg);
     } catch (err) {
       console.error("[worker-no-show] error actualizando reservas", err);
-      ch.nack(msg, false, false); 
+      ch.nack(msg, false, false);
     }
   });
 }
